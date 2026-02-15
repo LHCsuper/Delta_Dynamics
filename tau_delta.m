@@ -6,6 +6,7 @@ function tau = tau_delta(I1,I_motor,ax,ay,az,ddtheta1,ddtheta2,ddtheta3,dtheta1,
 %    2026-02-15 20:48:15
 
 t2 = cos(theta1);
+
 t3 = cos(theta2);
 t4 = cos(theta3);
 t5 = sin(theta1);
