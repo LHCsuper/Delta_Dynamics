@@ -14,45 +14,50 @@ mp = 0.274;
 %% 仿真
 
 %轨迹生成
-step = 0.001;
-T = 3;
-tVec = 0:step:T;
-n  = length(tVec);
+%% ===== 定义分拣点 =====
+A = [-0.3, 0, -0.7];
+B = [-0.3, 0, -0.65];
+C = [-0.2, 0, -0.6];
+D = [ 0.0, 0, -0.6];
+E = [ 0.2, 0, -0.6];
+F = [ 0.3, 0, -0.65];
+G = [ 0.3, 0, -0.7];
 
-R = 0.1;
-z0 = -0.7;
-trajFunc = @(t) [R*cos(100*t);
-                 R*sin(100*t);
-                 z0];
-traj = generateDeltaTrajectory(trajFunc, tVec, @deltaIK);%直接能够生成好各个需要的轨迹
+T  = 0.4;
+dt = 0.001;
+t  = 0:dt:T;
+nCycle=5;
+%% ===== 生成轨迹 =====
+traj = generateSortingTrajectory(A,B,C,D,E,F,G,T,t,nCycle);
 
+%% ===== 数值计算 v,a =====
+vx = gradient(traj.x, dt);
+vy = gradient(traj.y, dt);
+vz = gradient(traj.z, dt);
 
+ax = gradient(vx, dt);
+ay = gradient(vy, dt);
+az = gradient(vz, dt);
 
+%% ===== 逆运动学 =====
+N = length(t);
+theta = zeros(3,N);
 
-% tau = zeros(3,n);
-% %代入动力学
-% for k = 1:length(tVec)
-% 
-%     tau(:,k) = tau_delta(I1, I_motor,...
-%                          traj.ax(k), traj.ay(k), traj.az(k),...
-%                          traj.ddtheta(1,k), traj.ddtheta(2,k), traj.ddtheta(3,k),...
-%                          traj.dtheta(1,k), traj.dtheta(2,k), traj.dtheta(3,k),...
-%                          m1, m2, mp,...
-%                          traj.theta(1,k), traj.theta(2,k), traj.theta(3,k),...
-%                          traj.x(k), traj.y(k), traj.z(k));
-% end
-% 
-% 
-% 
-% 
-% %打印结果
-% plotDeltaResults(tVec,tau,traj);
+for i = 1:N
+    P = [traj.x(i);
+         traj.y(i);
+         traj.z(i)];
+    theta(:,i) = deltaIK(P);
+end
 
+%% ===== 关节速度加速度 =====
+dtheta  = gradient(theta, dt);
+ddtheta = gradient(dtheta, dt);
 
 %% PD控制
 %% ================= 控制参数 =================
-KP = diag([40,40,40]);     % 位置增益
-KD = diag([30,300,30]);       % 速度增益
+KP = diag([400,400,400]);     % 位置增益
+KD = diag([300,300,300]);       % 速度增益
 
 n = length(traj.t);
 step = traj.t(2) - traj.t(1);
@@ -102,7 +107,7 @@ for k = 1:n-1
         xk, yk, zk);
    
     %纯PD法
-        % tau(:,k) = KP*e + KD*de;
+        tau(:,k) = KP*e + KD*de;
     %% 正动力学更新位置
     ddq = dynamics_inverse( ...
             tau(:,k), ...
