@@ -6,7 +6,7 @@ close all
 %% 各个参数
 mm = 1e-3;
 I1 =  0.065490;
-I_motor = 1.303;%0.002085
+I_motor = 1.78*1e-3;%0.002085
 m1 = 1.672;
 m2 = 0.11;
 mp = 0.274;
@@ -23,10 +23,10 @@ E = [ 0.2, 0, -0.6];
 F = [ 0.3, 0, -0.65];
 G = [ 0.3, 0, -0.7];
 
-T  = 0.4;
+T  = 1.5;
 dt = 0.001;
 t  = 0:dt:T;
-nCycle=5;
+nCycle=2;
 %% ===== 生成轨迹 =====
 traj = generateSortingTrajectory(A,B,C,D,E,F,G,T,t,nCycle);
 
@@ -56,8 +56,8 @@ ddtheta = gradient(dtheta, dt);
 
 %% PD控制
 %% ================= 控制参数 =================
-KP = diag([400,400,400]);     % 位置增益
-KD = diag([300,300,300]);       % 速度增益
+KP = diag([500,500,500]);     % 位置增益
+KD = diag([400,300,300]);       % 速度增益
 
 n = length(traj.t);
 step = traj.t(2) - traj.t(1);
@@ -107,7 +107,7 @@ for k = 1:n-1
         xk, yk, zk);
    
     %纯PD法
-        tau(:,k) = KP*e + KD*de;
+        % tau(:,k) = KP*e + KD*de;
     %% 正动力学更新位置
     ddq = dynamics_inverse( ...
             tau(:,k), ...
@@ -122,6 +122,89 @@ for k = 1:n-1
     q(:,k+1)  = qk  + dq(:,k+1) * step;
     
 end
+
+% figure('Name','Position');
+% subplot(3,1,1);
+% plot(traj.t, traj.x, 'LineWidth',1.5);
+% grid on; ylabel('x (m)');
+% 
+% subplot(3,1,2);
+% plot(traj.t, traj.y, 'LineWidth',1.5);
+% grid on; ylabel('y (m)');
+% 
+% subplot(3,1,3);
+% plot(traj.t, traj.z, 'LineWidth',1.5);
+% grid on; ylabel('z (m)');
+% xlabel('Time (s)');
+% 
+% sgtitle('Sorting Trajectory Position');
+
+% figure('Name','Velocity');
+% subplot(3,1,1);
+% plot(traj.t, vx, 'LineWidth',1.5);
+% grid on; ylabel('v_x (m/s)');
+% 
+% subplot(3,1,2);
+% plot(traj.t, vy, 'LineWidth',1.5);
+% grid on; ylabel('v_y (m/s)');
+% 
+% subplot(3,1,3);
+% plot(traj.t, vz, 'LineWidth',1.5);
+% grid on; ylabel('v_z (m/s)');
+% xlabel('Time (s)');
+% 
+% sgtitle('Sorting Trajectory Velocity');
+
+% 
+% figure('Name','Acceleration');
+% subplot(3,1,1);
+% plot(traj.t, ax, 'LineWidth',1.5);
+% grid on; ylabel('a_x (m/s^2)');
+% 
+% subplot(3,1,2);
+% plot(traj.t, ay, 'LineWidth',1.5);
+% grid on; ylabel('a_y (m/s^2)');
+% 
+% subplot(3,1,3);
+% plot(traj.t, az, 'LineWidth',1.5);
+% grid on; ylabel('a_z (m/s^2)');
+% xlabel('Time (s)');
+% 
+% sgtitle('Sorting Trajectory Acceleration');
+
+
+% % 图3
+% idx = traj.z > -0.699;   % 只保留不是底边的数据
+% 
+% x_plot = traj.x(idx);
+% z_plot = traj.z(idx);
+% 
+% figure('Color','w');   % 白底更专业
+% plot(x_plot, z_plot, 'b', 'LineWidth',2);
+% grid on;
+% axis equal;
+% 
+% % 坐标轴范围（可选）
+% xlim([-0.35 0.35]);
+% ylim([-0.9 -0.4]);
+% 
+% % 字体统一
+% set(gca, ...
+%     'FontSize',18, ...        % 刻度字体
+%     'LineWidth',1.5);         % 坐标轴线条稍粗
+% 
+% xlabel('X (m)', ...
+%     'FontSize',20, ...
+%     'FontWeight','bold');
+% 
+% ylabel('Z (m)', ...
+%     'FontSize',20, ...
+%     'FontWeight','bold');
+% 
+% title('Gate-Shaped Sorting Trajectory', ...
+%     'FontSize',21, ...
+%     'FontWeight','normal');
+
 
 figure;
 for i = 1:3
@@ -141,3 +224,51 @@ for i = 1:3
 end
 sgtitle('Delta Joint Tracking Performance');
 
+ for i = 1:3
+
+    figure('Color','w');
+    hold on;
+
+    % ===== 时间筛选 0~1.5 s =====
+    idx_time = (traj.t >= 0) & (traj.t <= 1.5);
+
+    t_sel = traj.t(idx_time);
+    q_sel = q(i, idx_time);
+    theta_sel = traj.theta(i, idx_time);
+
+    % Actual（蓝实线）
+    plot(t_sel, q_sel, ...
+        'Color',[0 0.4470 0.7410], ...
+        'LineWidth',2);
+
+    % Desired（红虚线）
+    plot(t_sel, theta_sel, ...
+        'r--', ...
+        'LineWidth',2);
+
+    grid on;
+    xlim([0 1.5]);
+
+    % ===== 坐标轴统一格式 =====
+    set(gca, ...
+        'FontSize',18, ...
+        'LineWidth',1.5, ...
+        'TickDir','in', ...
+        'Box','on');
+
+    xlabel('Time (s)', ...
+        'FontSize',20, ...
+        'FontWeight','bold');
+
+   ylabel(sprintf('$\\theta_{%d}\\,\\mathrm{(rad)}$', i), ...
+    'Interpreter','latex', ...
+    'FontSize',20);
+
+    title(['Joint ', num2str(i), ' Tracking Performance'], ...
+        'FontSize',21);
+
+    legend({'Actual','Adams&Simulink'}, ...
+        'FontSize',16, ...
+        'Location','best');
+
+end

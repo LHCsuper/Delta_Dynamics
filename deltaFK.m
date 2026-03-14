@@ -77,7 +77,7 @@ if Delta < 0
     error('Delta FK: no real solution');
 end
 
-z = (-b - sqrt(Delta))/a;   % 选向下根
+z = (-b + sqrt(Delta))/a;   % 选向下根
 x = D1 + D2*z;
 y = D3 + D4*z;
 P = [x; y; z];
